@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: nightly
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: canary
+
+      - name: Install deno_bindgen
+        run: deno install -Afq -n deno_bindgen https://deno.land/x/deno_bindgen/cli.ts
+
+      - name: Build
+        shell: bash
+        run: |
+          set -xeuo pipefail
+          rustc --version
+          cargo --version
+          deno_bindgen --release=https://github.com/load1n9/deno-meilisearch/releases/download/0.1.0/
+      - name: Release
+        uses: softprops/action-gh-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "release draft"
+          draft: true
+          files: |
+            target/release/deno-meilisearch.so
+            target/release/deno-meilisearch.dylib
+            target/release/deno-meilisearch.dll
